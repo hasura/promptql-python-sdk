@@ -417,6 +417,16 @@ class Conversation:
 
 
 def _raise_non_200(response: requests.Response):
+    """
+    Raise an exception for non-200 responses.
+
+    Args:
+        response: The response object
+
+    Raises:
+        PromptQLAPIError: If the response status is not 200
+    """
+    # Try to parse the error message from the response
     try:
         error_data = response.json()
         error_message = error_data.get("error", response.text or "Unknown error")
@@ -425,6 +435,7 @@ def _raise_non_200(response: requests.Response):
             f"Error parsing error response: {str(e)}, Response: {response.text}"
         )
 
+    # Raise the exception with the parsed error message
     raise PromptQLAPIError(
         f"API error (status {response.status_code}): {error_message}"
     )
