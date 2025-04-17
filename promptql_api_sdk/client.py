@@ -3,7 +3,7 @@ PromptQL Natural Language API client implementation.
 """
 
 import json
-from typing import Dict, Generator, List, Optional, Union, Any, Callable
+from typing import Dict, Generator, List, Optional, Union, Any, Callable, TypeVar, cast
 
 import requests
 from requests.exceptions import RequestException
@@ -25,10 +25,22 @@ from promptql_api_sdk.types import (
 from promptql_api_sdk.exceptions import PromptQLAPIError
 
 
+def is_assistant_action_chunk(chunk: Any) -> bool:
+    """Check if a chunk is an AssistantActionChunk."""
+    return isinstance(chunk, AssistantActionChunk)
+
+
+def get_message_from_chunk(chunk: Any) -> Optional[str]:
+    """Get the message from a chunk if it's an AssistantActionChunk."""
+    if is_assistant_action_chunk(chunk) and hasattr(chunk, "message"):
+        return chunk.message
+    return None
+
+
 class PromptQLClient:
     """
     Client for the PromptQL Natural Language API.
-    
+
     This client provides methods to interact with the PromptQL Natural Language API,
     allowing you to send messages and receive responses with support for streaming.
     """
@@ -140,21 +152,19 @@ class PromptQLClient:
         Raises:
             PromptQLAPIError: If the API returns an error
         """
-        response = requests.post(
-            url, headers=headers, data=request.model_dump_json()
-        )
-        
+        response = requests.post(url, headers=headers, data=request.model_dump_json())
+
         if response.status_code != 200:
             try:
                 error_data = response.json()
                 error_message = error_data.get("error", "Unknown error")
             except ValueError:
                 error_message = response.text or "Unknown error"
-            
+
             raise PromptQLAPIError(
                 f"API error (status {response.status_code}): {error_message}"
             )
-        
+
         try:
             return QueryResponse.model_validate(response.json())
         except Exception as e:
@@ -186,23 +196,23 @@ class PromptQLClient:
                     error_message = error_data.get("error", "Unknown error")
                 except ValueError:
                     error_message = response.text or "Unknown error"
-                
+
                 raise PromptQLAPIError(
                     f"API error (status {response.status_code}): {error_message}"
                 )
-            
+
             for line in response.iter_lines():
                 if not line:
                     continue
-                
+
                 try:
                     # SSE format: data: {...}
                     if line.startswith(b"data: "):
                         data = json.loads(line[6:].decode("utf-8"))
-                        
+
                         # Determine the chunk type and parse accordingly
                         chunk_type = data.get("type")
-                        
+
                         if chunk_type == "assistant_action_chunk":
                             yield AssistantActionChunk.model_validate(data)
                         elif chunk_type == "artifact_update_chunk":
@@ -213,7 +223,9 @@ class PromptQLClient:
                             # Unknown chunk type, try to parse as generic
                             raise PromptQLAPIError(f"Unknown chunk type: {chunk_type}")
                 except Exception as e:
-                    raise PromptQLAPIError(f"Error parsing stream chunk: {str(e)}") from e
+                    raise PromptQLAPIError(
+                        f"Error parsing stream chunk: {str(e)}"
+                    ) from e
 
     def create_conversation(
         self,
@@ -240,7 +252,7 @@ class PromptQLClient:
 class Conversation:
     """
     Helper class for managing conversations with the PromptQL Natural Language API.
-    
+
     This class maintains the conversation state and provides methods to send messages
     and process responses.
     """
@@ -292,11 +304,12 @@ class Conversation:
         if stream:
             # For streaming, we need to collect the interactions and artifacts
             # as they come in, and then return the generator
+            assert isinstance(response, Generator)
             return self._process_stream(response)
         else:
             # For non-streaming, we can update the state directly
             assert isinstance(response, QueryResponse)
-            
+
             # Add the new interaction
             self.interactions.append(
                 Interaction(
@@ -304,13 +317,17 @@ class Conversation:
                     assistant_actions=response.assistant_actions,
                 )
             )
-            
+
             # Update artifacts
             for artifact in response.modified_artifacts:
                 self._update_artifact(artifact)
-            
+
             # Return the assistant action
-            return response.assistant_actions[0] if response.assistant_actions else AssistantAction()
+            return (
+                response.assistant_actions[0]
+                if response.assistant_actions
+                else AssistantAction()
+            )
 
     def _process_stream(
         self, stream: Generator[StreamChunk, None, None]
@@ -329,23 +346,23 @@ class Conversation:
         """
         # We'll collect the assistant actions here
         assistant_actions: List[AssistantAction] = []
-        
+
         # Create a new interaction with just the user message for now
         # We'll add the assistant actions later
         current_interaction = Interaction(
             user_message=UserMessage(text=self.interactions[-1].user_message.text),
         )
-        
+
         for chunk in stream:
             # Update the conversation state based on the chunk type
             if isinstance(chunk, AssistantActionChunk):
                 # Ensure we have enough assistant actions
                 while len(assistant_actions) <= chunk.index:
                     assistant_actions.append(AssistantAction())
-                
+
                 # Update the assistant action at the specified index
                 action = assistant_actions[chunk.index]
-                
+
                 if chunk.message is not None:
                     action.message = (action.message or "") + chunk.message
                 if chunk.plan is not None:
@@ -356,18 +373,18 @@ class Conversation:
                     action.code_output = (action.code_output or "") + chunk.code_output
                 if chunk.code_error is not None:
                     action.code_error = (action.code_error or "") + chunk.code_error
-                
+
             elif isinstance(chunk, ArtifactUpdateChunk):
                 # Update the artifact
                 self._update_artifact(chunk.artifact)
-                
+
             elif isinstance(chunk, ErrorChunk):
                 # Raise an exception for error chunks
                 raise PromptQLAPIError(f"Stream error: {chunk.error}")
-            
+
             # Yield the chunk to the caller
             yield chunk
-        
+
         # Update the interaction with the collected assistant actions
         current_interaction.assistant_actions = assistant_actions
         self.interactions.append(current_interaction)
@@ -385,7 +402,7 @@ class Conversation:
                 # Replace the existing artifact
                 self.artifacts[i] = artifact
                 return
-        
+
         # If we get here, the artifact doesn't exist yet, so add it
         self.artifacts.append(artifact)
 

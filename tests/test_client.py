@@ -4,6 +4,7 @@ Unit tests for the PromptQL Natural Language API client.
 
 import json
 import unittest
+from typing import cast
 from unittest.mock import patch, MagicMock
 
 from promptql_api_sdk import PromptQLClient
@@ -72,9 +73,11 @@ class TestPromptQLClient(unittest.TestCase):
 
         # Verify the response
         self.assertIsInstance(response, QueryResponse)
-        self.assertEqual(len(response.assistant_actions), 1)
+        # Cast to QueryResponse to help type checker
+        query_response = cast(QueryResponse, response)
+        self.assertEqual(len(query_response.assistant_actions), 1)
         self.assertEqual(
-            response.assistant_actions[0].message, "This is a test response"
+            query_response.assistant_actions[0].message, "This is a test response"
         )
 
         # Verify the request
@@ -113,9 +116,13 @@ class TestPromptQLClient(unittest.TestCase):
         # Verify the chunks
         self.assertEqual(len(chunks), 3)
         self.assertIsInstance(chunks[0], AssistantActionChunk)
-        self.assertEqual(chunks[0].message, "This is ")
-        self.assertEqual(chunks[1].message, "a test ")
-        self.assertEqual(chunks[2].message, "response")
+        # Cast to AssistantActionChunk to help type checker
+        chunk0 = cast(AssistantActionChunk, chunks[0])
+        chunk1 = cast(AssistantActionChunk, chunks[1])
+        chunk2 = cast(AssistantActionChunk, chunks[2])
+        self.assertEqual(chunk0.message, "This is ")
+        self.assertEqual(chunk1.message, "a test ")
+        self.assertEqual(chunk2.message, "response")
 
         # Verify the request
         args, kwargs = mock_post.call_args
@@ -199,19 +206,21 @@ class TestConversation(unittest.TestCase):
 
         # Verify the response
         self.assertIsInstance(response, AssistantAction)
-        self.assertEqual(response.message, "Test response")
+        # Cast to AssistantAction to help type checker
+        assistant_action = cast(AssistantAction, response)
+        self.assertEqual(assistant_action.message, "Test response")
 
         # Verify the conversation state
         self.assertEqual(len(self.conversation.interactions), 2)
         self.assertEqual(
             self.conversation.interactions[1].user_message.text, "Test message"
         )
-        self.assertIsNotNone(self.conversation.interactions[1].assistant_actions)
-        self.assertEqual(len(self.conversation.interactions[1].assistant_actions), 1)
-        self.assertEqual(
-            self.conversation.interactions[1].assistant_actions[0].message,
-            "Test response",
-        )
+        # Check assistant actions
+        actions = self.conversation.interactions[1].assistant_actions
+        self.assertIsNotNone(actions)
+        if actions is not None:  # This helps the type checker
+            self.assertEqual(len(actions), 1)
+            self.assertEqual(actions[0].message, "Test response")
 
         self.assertEqual(len(self.conversation.artifacts), 1)
         self.assertEqual(self.conversation.artifacts[0].identifier, "test-artifact")

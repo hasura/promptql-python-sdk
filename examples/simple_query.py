@@ -9,8 +9,10 @@ from typing import Optional
 # Add the parent directory to the path so we can import the SDK
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from promptql_api_sdk import PromptQLClient, HasuraLLMProvider
+from promptql_api_sdk import PromptQLClient
+from promptql_api_sdk.types.models import HasuraLLMProvider, AssistantAction
 from promptql_api_sdk.exceptions import PromptQLAPIError
+from promptql_api_sdk.client import get_message_from_chunk
 
 
 def main():
@@ -44,19 +46,22 @@ def main():
         # Send a message and get a non-streaming response
         print("\n--- Non-streaming response ---")
         response = conversation.send_message("What tables do I have in my database?")
+        # The response is an AssistantAction object
+        assert isinstance(response, AssistantAction)
         print(f"Assistant: {response.message}")
 
         # Send a follow-up message with streaming response
         print("\n--- Streaming response ---")
         print("User: Can you show me the schema of the users table?")
         print("Assistant: ", end="", flush=True)
-        
+
         for chunk in conversation.send_message(
             "Can you show me the schema of the users table?", stream=True
         ):
-            if hasattr(chunk, "message") and chunk.message:
-                print(chunk.message, end="", flush=True)
-        
+            message = get_message_from_chunk(chunk)
+            if message:
+                print(message, end="", flush=True)
+
         print("\n")
 
         # Show any artifacts that were created

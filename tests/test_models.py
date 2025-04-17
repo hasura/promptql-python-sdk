@@ -122,8 +122,11 @@ class TestModels(unittest.TestCase):
         )
         self.assertEqual(interaction.user_message.text, "Test message")
         self.assertIsNotNone(interaction.assistant_actions)
-        self.assertEqual(len(interaction.assistant_actions), 1)
-        self.assertEqual(interaction.assistant_actions[0].message, "Test response")
+        # Check if assistant_actions is not None to help type checker
+        actions = interaction.assistant_actions
+        if actions is not None:
+            self.assertEqual(len(actions), 1)
+            self.assertEqual(actions[0].message, "Test response")
 
         # Test without assistant actions
         interaction = Interaction(

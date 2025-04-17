@@ -10,15 +10,17 @@ from typing import Dict, List, Optional, Any
 # Add the parent directory to the path so we can import the SDK
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from promptql_api_sdk import (
-    PromptQLClient,
+from promptql_api_sdk import PromptQLClient
+from promptql_api_sdk.types.models import (
     HasuraLLMProvider,
     AnthropicLLMProvider,
     OpenAILLMProvider,
     Artifact,
     ArtifactType,
+    AssistantAction,
 )
 from promptql_api_sdk.exceptions import PromptQLAPIError
+from promptql_api_sdk.client import get_message_from_chunk
 
 
 def get_llm_provider(provider_name: str) -> Any:
@@ -72,25 +74,27 @@ def create_sample_artifacts() -> List[Artifact]:
 def interactive_conversation(client: PromptQLClient):
     """Run an interactive conversation with the PromptQL API."""
     print("\n=== PromptQL Interactive Conversation ===")
-    print("Type 'exit' to quit, 'stream' to toggle streaming, 'artifacts' to show artifacts")
-    
+    print(
+        "Type 'exit' to quit, 'stream' to toggle streaming, 'artifacts' to show artifacts"
+    )
+
     # Create a conversation with sample artifacts
     conversation = client.create_conversation(
         system_instructions="You are a helpful assistant that provides information about data."
     )
-    
+
     # Add sample artifacts
     for artifact in create_sample_artifacts():
         conversation._update_artifact(artifact)
-    
+
     # Set initial streaming mode
     streaming = True
     print(f"Streaming mode: {'ON' if streaming else 'OFF'}")
-    
+
     while True:
         # Get user input
         user_input = input("\nYou: ").strip()
-        
+
         # Check for commands
         if user_input.lower() == "exit":
             break
@@ -109,31 +113,34 @@ def interactive_conversation(client: PromptQLClient):
             else:
                 print("No artifacts available")
             continue
-        
+
         # Send the message
         try:
             if streaming:
                 print("Assistant: ", end="", flush=True)
                 for chunk in conversation.send_message(user_input, stream=True):
-                    if hasattr(chunk, "message") and chunk.message:
-                        print(chunk.message, end="", flush=True)
+                    message = get_message_from_chunk(chunk)
+                    if message:
+                        print(message, end="", flush=True)
                 print()
             else:
                 response = conversation.send_message(user_input)
+                # The response is an AssistantAction object
+                assert isinstance(response, AssistantAction)
                 print(f"Assistant: {response.message}")
-                
+
                 if response.code:
                     print("\n--- Code ---")
                     print(response.code)
-                    
+
                 if response.code_output:
                     print("\n--- Code Output ---")
                     print(response.code_output)
-                    
+
                 if response.code_error:
                     print("\n--- Code Error ---")
                     print(response.code_error)
-        
+
         except PromptQLAPIError as e:
             print(f"Error: {e}")
 
@@ -151,7 +158,7 @@ def main():
     if not ddn_url:
         print("Please set the PROMPTQL_DDN_URL environment variable")
         sys.exit(1)
-    
+
     # Get LLM provider from command line or default to hasura
     provider_name = sys.argv[1] if len(sys.argv) > 1 else "hasura"
     llm_provider = get_llm_provider(provider_name)
