@@ -133,7 +133,7 @@ class TestModels(unittest.TestCase):
             user_message=UserMessage(text="Test message"),
         )
         self.assertEqual(interaction.user_message.text, "Test message")
-        self.assertIsNone(interaction.assistant_actions)
+        self.assertEqual(interaction.assistant_actions, [])
 
     def test_query_request(self):
         """Test query request model."""

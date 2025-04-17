@@ -155,15 +155,7 @@ class PromptQLClient:
         response = requests.post(url, headers=headers, data=request.model_dump_json())
 
         if response.status_code != 200:
-            try:
-                error_data = response.json()
-                error_message = error_data.get("error", "Unknown error")
-            except ValueError:
-                error_message = response.text or "Unknown error"
-
-            raise PromptQLAPIError(
-                f"API error (status {response.status_code}): {error_message}"
-            )
+            _raise_non_200(response)
 
         try:
             return QueryResponse.model_validate(response.json())
@@ -191,15 +183,7 @@ class PromptQLClient:
             url, headers=headers, data=request.model_dump_json(), stream=True
         ) as response:
             if response.status_code != 200:
-                try:
-                    error_data = response.json()
-                    error_message = error_data.get("error", "Unknown error")
-                except ValueError:
-                    error_message = response.text or "Unknown error"
-
-                raise PromptQLAPIError(
-                    f"API error (status {response.status_code}): {error_message}"
-                )
+                _raise_non_200(response)
 
             for line in response.iter_lines():
                 if not line:
@@ -430,3 +414,17 @@ class Conversation:
         """
         self.interactions = []
         self.artifacts = []
+
+
+def _raise_non_200(response: requests.Response):
+    try:
+        error_data = response.json()
+        error_message = error_data.get("error", response.text or "Unknown error")
+    except Exception as e:
+        error_message = (
+            f"Error parsing error response: {str(e)}, Response: {response.text}"
+        )
+
+    raise PromptQLAPIError(
+        f"API error (status {response.status_code}): {error_message}"
+    )
