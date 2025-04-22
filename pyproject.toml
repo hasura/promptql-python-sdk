@@ -1,6 +1,6 @@
 [project]
 name = "promptql-api-sdk"
-version = "0.1.0"
+version = "0.1.1"
 description = "Python SDK for PromptQL Natural Language API"
 authors = [
     {name = "Hasura Team", email = "info@hasura.io"}
@@ -27,10 +27,8 @@ dependencies = [
 ]
 
 [project.urls]
-homepage = "https://hasura.io/docs/promptql/promptql-apis/"
 repository = "https://github.com/hasura/promptql-python-sdk"
-documentation = "https://hasura.io/docs/promptql/promptql-apis/"
-
+documentation = "https://hasura.io/docs/promptql/promptql-apis/natural-language-api/"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
