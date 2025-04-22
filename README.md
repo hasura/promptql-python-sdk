@@ -2,6 +2,18 @@
 
 A Python SDK for interacting with the [PromptQL Natural Language API](https://hasura.io/docs/promptql/promptql-apis/natural-language-api/).
 
+## Installation
+
+```bash
+pip install promptql-api-sdk
+```
+
+Or with Poetry:
+
+```bash
+poetry add promptql-api-sdk
+```
+
 ## Features
 
 - Full support for the PromptQL Natural Language API
