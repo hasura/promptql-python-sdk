@@ -13,7 +13,8 @@ A Python SDK for interacting with the [PromptQL Natural Language API](https://ha
 ## Quick Start
 
 ```python
-from promptql_api_sdk import PromptQLClient, HasuraLLMProvider
+from promptql_api_sdk import PromptQLClient
+from promptql_api_sdk.types.models import HasuraLLMProvider
 
 # Initialize the client
 client = PromptQLClient(
@@ -60,7 +61,7 @@ artifacts = conversation.get_artifacts()
 The SDK supports multiple LLM providers:
 
 ```python
-from promptql_api_sdk import HasuraLLMProvider, AnthropicLLMProvider, OpenAILLMProvider
+from promptql_api_sdk.types.models import HasuraLLMProvider, AnthropicLLMProvider, OpenAILLMProvider
 
 # Hasura (default)
 hasura_provider = HasuraLLMProvider()
