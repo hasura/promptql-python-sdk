@@ -6,8 +6,8 @@ This script tests the v2 API functionality directly within the SDK repository.
 Run this script locally to verify the SDK works with your environment.
 
 Usage:
-    poetry run python test_sdk_v2.py
-    poetry run python test_sdk_v2.py --help
+    poetry run python scripts/test_sdk_v2.py
+    poetry run python scripts/test_sdk_v2.py --help
 """
 import os
 import sys
