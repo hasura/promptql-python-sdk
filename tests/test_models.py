@@ -139,7 +139,6 @@ class TestModels(unittest.TestCase):
     def test_query_request_v1(self):
         """Test v1 query request model."""
         request = QueryRequestV1(
-            promptql_api_key="test-api-key",
             llm=HasuraLLMProvider(),
             ddn=DDNConfig(url="https://test-url.hasura.app"),
             timezone="UTC",
@@ -152,7 +151,6 @@ class TestModels(unittest.TestCase):
         )
 
         self.assertEqual(request.version, "v1")
-        self.assertEqual(request.promptql_api_key, "test-api-key")
         self.assertEqual(request.llm.provider, LLMProviderType.HASURA)
         self.assertEqual(request.ddn.url, "https://test-url.hasura.app")
         self.assertEqual(request.timezone, "UTC")
@@ -164,7 +162,6 @@ class TestModels(unittest.TestCase):
         json_data = request.model_dump_json()
         data = json.loads(json_data)
         self.assertEqual(data["version"], "v1")
-        self.assertEqual(data["promptql_api_key"], "test-api-key")
         self.assertEqual(data["llm"]["provider"], "hasura")
         self.assertEqual(data["ddn"]["url"], "https://test-url.hasura.app")
         self.assertEqual(data["timezone"], "UTC")

@@ -11,16 +11,12 @@ from uuid import uuid4
 from promptql_api_sdk import PromptQLClient
 from promptql_api_sdk.types.models import (
     HasuraLLMProvider,
-    DDNConfig,
     UserMessage,
     AssistantAction,
     Interaction,
-    QueryRequestV1,
     QueryResponse,
     ThreadMetadataChunk,
     AssistantActionChunk,
-    ArtifactUpdateChunk,
-    ErrorChunk,
     Artifact,
     ArtifactType,
 )
@@ -97,7 +93,6 @@ class TestPromptQLClient(unittest.TestCase):
         # Parse the request data
         request_data = json.loads(kwargs["data"])
         self.assertEqual(request_data["version"], "v1")
-        self.assertEqual(request_data["promptql_api_key"], self.api_key)
         self.assertEqual(request_data["llm"]["provider"], "hasura")
         self.assertEqual(request_data["ddn"]["url"], self.ddn_url)
         self.assertEqual(len(request_data["interactions"]), 1)

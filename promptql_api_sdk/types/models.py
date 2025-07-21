@@ -127,7 +127,6 @@ class QueryRequestV1(QueryRequestBase):
     """Query request model for v1 API."""
 
     version: Literal["v1"] = "v1"
-    promptql_api_key: str
     llm: LLMProvider
     ai_primitives_llm: Optional[LLMProvider] = None
     ddn: DDNConfig

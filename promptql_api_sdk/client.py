@@ -149,7 +149,6 @@ class PromptQLClient:
         # Create the request based on API version
         if self.api_version == "v1":
             request = QueryRequestV1(
-                promptql_api_key=self.api_key,
                 llm=self.llm_provider,
                 ai_primitives_llm=self.ai_primitives_llm_provider,
                 ddn=self.ddn_config,

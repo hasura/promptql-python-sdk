@@ -17,11 +17,11 @@ from promptql_api_sdk.exceptions import PromptQLAPIError
 def example_v1():
     """Example using v1 API."""
     print("=== v1 API Example ===")
-    
+
     # Get required environment variables for v1
     api_key = os.environ.get("PROMPTQL_API_KEY")
     ddn_url = os.environ.get("PROMPTQL_DDN_URL")
-    
+
     if not api_key or not ddn_url:
         print("For v1 API, please set:")
         print("  PROMPTQL_API_KEY")
@@ -45,12 +45,15 @@ def example_v1():
         conversation = client.create_conversation(
             system_instructions="You are a helpful data analyst."
         )
-        
+
         # Send a simple query
-        response = conversation.send_message("Hello, can you help me with data analysis?")
+        response = conversation.send_message(
+            "Hello, can you help me with data analysis?"
+        )
         assert isinstance(response, AssistantAction)
-        print(f"✓ Response: {response.message[:100]}...")
-        
+        if response.message:
+            print(f"✓ Response: {response.message[:100]}...")
+
     except PromptQLAPIError as e:
         print(f"✗ Error: {e}")
 
@@ -58,16 +61,16 @@ def example_v1():
 def example_v2():
     """Example using v2 API."""
     print("\n=== v2 API Example ===")
-    
+
     # Get required environment variables for v2
     api_key = os.environ.get("PROMPTQL_API_KEY")
     build_id_str = os.environ.get("PROMPTQL_BUILD_ID")
     build_version = os.environ.get("PROMPTQL_BUILD_VERSION")
-    
+
     if not api_key:
         print("For v2 API, please set PROMPTQL_API_KEY")
         return
-        
+
     if not build_id_str and not build_version:
         print("For v2 API, please set either:")
         print("  PROMPTQL_BUILD_ID (UUID format)")
@@ -101,12 +104,15 @@ def example_v2():
     try:
         # Create conversation (system instructions come from project config)
         conversation = client.create_conversation()
-        
+
         # Send a simple query
-        response = conversation.send_message("Hello, can you help me with data analysis?")
+        response = conversation.send_message(
+            "Hello, can you help me with data analysis?"
+        )
         assert isinstance(response, AssistantAction)
-        print(f"✓ Response: {response.message[:100]}...")
-        
+        if response.message:
+            print(f"✓ Response: {response.message[:100]}...")
+
     except PromptQLAPIError as e:
         print(f"✗ Error: {e}")
 
@@ -115,27 +121,29 @@ def main():
     """Run both examples."""
     print("PromptQL API SDK - v1 vs v2 Comparison")
     print("=" * 50)
-    
+
     print("\nKey Differences:")
     print("v1 API:")
     print("  - Requires DDN URL and LLM provider configuration")
     print("  - System instructions specified in requests")
     print("  - More configuration required")
-    
+
     print("\nv2 API:")
     print("  - Uses build ID or build version")
     print("  - LLM config comes from project settings")
     print("  - System instructions come from project settings")
     print("  - Simpler configuration")
-    
+
     print("\n" + "=" * 50)
-    
+
     # Run examples
     example_v1()
     example_v2()
-    
+
     print("\n" + "=" * 50)
-    print("Recommendation: Use v2 API for new projects as it's simpler and more maintainable.")
+    print(
+        "Recommendation: Use v2 API for new projects as it's simpler and more maintainable."
+    )
 
 
 if __name__ == "__main__":

@@ -70,7 +70,7 @@ from promptql_api_sdk.types.models import HasuraLLMProvider
 client = PromptQLClient(
     api_key="your-promptql-api-key",
     ddn_url="your-ddn-url/v1/sql",
-    llm_provider=HasuraLLMProvider(),
+    llm_provider=HasuraLLMProvider(), # Required for v1 API
     timezone="America/Los_Angeles",
 )
 
