@@ -31,6 +31,7 @@ def test_v2_api():
     build_id_str = os.environ.get("PROMPTQL_BUILD_ID")
     build_version = os.environ.get("PROMPTQL_BUILD_VERSION")
     ddn_token = os.environ.get("PROMPTQL_DDN_TOKEN")
+    api_base_url = os.environ.get("PROMPTQL_API_BASE_URL")
 
     # Validate required parameters
     if not api_key:
@@ -73,6 +74,7 @@ def test_v2_api():
             build_version=build_version,
             timezone="UTC",
             ddn_headers=ddn_headers if ddn_headers else None,
+            api_base_url=api_base_url,
         )
         print(f"✅ Client initialized (API version: {client.api_version})")
     except Exception as e:
