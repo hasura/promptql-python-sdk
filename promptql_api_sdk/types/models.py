@@ -3,7 +3,8 @@ Data models for the PromptQL Natural Language API.
 """
 
 from enum import Enum
-from typing import Dict, List, Optional, Union, Literal, Any
+from typing import Dict, List, Optional, Union, Literal, Any, Annotated
+from uuid import UUID
 from pydantic import BaseModel, Field
 
 
@@ -39,10 +40,36 @@ LLMProvider = Union[HasuraLLMProvider, AnthropicLLMProvider, OpenAILLMProvider]
 
 
 class DDNConfig(BaseModel):
-    """DDN configuration."""
+    """DDN configuration for v1 API."""
 
     url: str
     headers: Dict[str, str] = Field(default_factory=dict)
+
+
+class DDNConfigV2(BaseModel):
+    """DDN configuration for v2 API."""
+
+    build_id: Optional[UUID] = Field(
+        default=None,
+        description="UUID of the DDN build. If both build_id and build_version are None, uses the applied build.",
+        examples=["8ac7ccd4-7502-44d5-b2ee-ea9639b1f653"],
+    )
+    build_version: Optional[str] = Field(
+        default=None,
+        description="Version of the DDN build. If both build_id and build_version are None, uses the applied build.",
+        examples=["505331f4b2"],
+    )
+    headers: Dict[str, str] = Field(
+        default_factory=dict,
+        description="HTTP headers that should be forwarded to DDN",
+    )
+
+    def model_post_init(self, __context: Any) -> None:
+        """Validate that build_id and build_version are not both specified."""
+        if self.build_id is not None and self.build_version is not None:
+            raise ValueError(
+                "Cannot specify both build_id and build_version simultaneously"
+            )
 
 
 class ArtifactType(str, Enum):
@@ -84,34 +111,66 @@ class Interaction(BaseModel):
     assistant_actions: List[AssistantAction] = Field(default_factory=list)
 
 
-class QueryRequest(BaseModel):
-    """Query request model."""
+class QueryRequestBase(BaseModel):
+    """Base class for query requests."""
+
+    stream: bool = False
+    artifacts: List[Artifact] = Field(default_factory=list)
+    timezone: str = Field(
+        description="An IANA timezone used to interpret queries that implicitly require timezones",
+        examples=["America/Los_Angeles"],
+    )
+    interactions: List[Interaction]
+
+
+class QueryRequestV1(QueryRequestBase):
+    """Query request model for v1 API."""
 
     version: Literal["v1"] = "v1"
-    promptql_api_key: str
     llm: LLMProvider
     ai_primitives_llm: Optional[LLMProvider] = None
     ddn: DDNConfig
-    artifacts: List[Artifact] = Field(default_factory=list)
     system_instructions: Optional[str] = None
-    timezone: str
-    interactions: List[Interaction]
-    stream: bool = False
+
+
+class QueryRequestV2(QueryRequestBase):
+    """Query request model for v2 API."""
+
+    version: Literal["v2"] = "v2"
+    ddn: DDNConfigV2
+
+
+QueryRequest = Annotated[
+    Union[QueryRequestV1, QueryRequestV2],
+    Field(discriminator="version"),
+]
 
 
 class QueryResponse(BaseModel):
     """Query response model for non-streaming responses."""
 
+    thread_id: UUID
     assistant_actions: List[AssistantAction]
-    modified_artifacts: List[Artifact] = Field(default_factory=list)
+    modified_artifacts: List[Artifact] = Field(
+        default_factory=list,
+        description="List of artifacts created or updated in this request. May contain duplicate artifact identifiers.",
+    )
 
 
 class ChunkType(str, Enum):
     """Stream chunk types."""
 
+    THREAD_METADATA_CHUNK = "thread_metadata_chunk"
     ASSISTANT_ACTION_CHUNK = "assistant_action_chunk"
     ARTIFACT_UPDATE_CHUNK = "artifact_update_chunk"
     ERROR_CHUNK = "error_chunk"
+
+
+class ThreadMetadataChunk(BaseModel):
+    """Thread metadata chunk for streaming responses."""
+
+    type: Literal[ChunkType.THREAD_METADATA_CHUNK] = ChunkType.THREAD_METADATA_CHUNK
+    thread_id: UUID
 
 
 class AssistantActionChunk(BaseModel):
@@ -140,4 +199,6 @@ class ErrorChunk(BaseModel):
     error: str
 
 
-StreamChunk = Union[AssistantActionChunk, ArtifactUpdateChunk, ErrorChunk]
+StreamChunk = Union[
+    ThreadMetadataChunk, AssistantActionChunk, ArtifactUpdateChunk, ErrorChunk
+]

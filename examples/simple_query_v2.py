@@ -1,18 +1,17 @@
 """
-Simple example of using the PromptQL Natural Language API SDK with v1 API.
-
-For v2 API usage, see simple_query_v2.py
+Simple example of using the PromptQL Natural Language API SDK with v2 API.
 """
 
 import os
 import sys
 from typing import Optional
+from uuid import UUID
 
 # Add the parent directory to the path so we can import the SDK
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from promptql_api_sdk import PromptQLClient
-from promptql_api_sdk.types.models import HasuraLLMProvider, AssistantAction
+from promptql_api_sdk.types.models import AssistantAction
 from promptql_api_sdk.exceptions import PromptQLAPIError
 from promptql_api_sdk.client import get_message_from_chunk
 
@@ -25,24 +24,35 @@ def main():
         print("Please set the PROMPTQL_API_KEY environment variable")
         sys.exit(1)
 
-    # Get DDN URL from environment variable
-    ddn_url = os.environ.get("PROMPTQL_DDN_URL")
-    if not ddn_url:
-        print("Please set the PROMPTQL_DDN_URL environment variable")
-        sys.exit(1)
+    # Get build ID or build version from environment variables
+    build_id_str = os.environ.get("PROMPTQL_BUILD_ID")
+    build_version = os.environ.get("PROMPTQL_BUILD_VERSION")
 
-    # Initialize the client (v1 API)
+    if not build_id_str and not build_version:
+        print("Build ID or build version is not set.")
+        print("Using applied build by default.")
+
+    # Parse build_id if provided
+    build_id = None
+    if build_id_str:
+        try:
+            build_id = UUID(build_id_str)
+        except ValueError:
+            print(f"Invalid build ID format: {build_id_str}")
+            print("Build ID should be a valid UUID")
+            sys.exit(1)
+
+    # Initialize the client with v2 API
     client = PromptQLClient(
         api_key=api_key,
-        ddn_url=ddn_url,
-        llm_provider=HasuraLLMProvider(),
+        build_id=build_id,
+        build_version=build_version,
         timezone="America/Los_Angeles",
     )
 
     # Create a conversation
-    conversation = client.create_conversation(
-        system_instructions="You are a helpful assistant that provides information about data."
-    )
+    # Note: system_instructions are ignored in v2 API as they come from project config
+    conversation = client.create_conversation()
 
     try:
         # Send a message and get a non-streaming response

@@ -16,13 +16,14 @@ from promptql_api_sdk.types.models import (
     UserMessage,
     AssistantAction,
     Interaction,
-    QueryRequest,
+    QueryRequestV1,
     QueryResponse,
     ChunkType,
     AssistantActionChunk,
     ArtifactUpdateChunk,
     ErrorChunk,
 )
+from uuid import uuid4
 
 
 class TestModels(unittest.TestCase):
@@ -135,10 +136,9 @@ class TestModels(unittest.TestCase):
         self.assertEqual(interaction.user_message.text, "Test message")
         self.assertEqual(interaction.assistant_actions, [])
 
-    def test_query_request(self):
-        """Test query request model."""
-        request = QueryRequest(
-            promptql_api_key="test-api-key",
+    def test_query_request_v1(self):
+        """Test v1 query request model."""
+        request = QueryRequestV1(
             llm=HasuraLLMProvider(),
             ddn=DDNConfig(url="https://test-url.hasura.app"),
             timezone="UTC",
@@ -151,7 +151,6 @@ class TestModels(unittest.TestCase):
         )
 
         self.assertEqual(request.version, "v1")
-        self.assertEqual(request.promptql_api_key, "test-api-key")
         self.assertEqual(request.llm.provider, LLMProviderType.HASURA)
         self.assertEqual(request.ddn.url, "https://test-url.hasura.app")
         self.assertEqual(request.timezone, "UTC")
@@ -163,7 +162,6 @@ class TestModels(unittest.TestCase):
         json_data = request.model_dump_json()
         data = json.loads(json_data)
         self.assertEqual(data["version"], "v1")
-        self.assertEqual(data["promptql_api_key"], "test-api-key")
         self.assertEqual(data["llm"]["provider"], "hasura")
         self.assertEqual(data["ddn"]["url"], "https://test-url.hasura.app")
         self.assertEqual(data["timezone"], "UTC")
@@ -171,7 +169,9 @@ class TestModels(unittest.TestCase):
 
     def test_query_response(self):
         """Test query response model."""
+        thread_id = uuid4()
         response = QueryResponse(
+            thread_id=thread_id,
             assistant_actions=[AssistantAction(message="Test response")],
             modified_artifacts=[
                 Artifact(
