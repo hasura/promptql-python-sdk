@@ -95,7 +95,7 @@ class PromptQLClient:
         """
         self.api_key = api_key
         self.timezone = timezone
-        self.api_base_url = api_base_url or self.BASE_URL
+        self.api_base_url = api_base_url.rstrip("/") if api_base_url else self.BASE_URL
 
         # Determine API version based on provided parameters
         if ddn_url is not None:
