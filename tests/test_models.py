@@ -16,13 +16,14 @@ from promptql_api_sdk.types.models import (
     UserMessage,
     AssistantAction,
     Interaction,
-    QueryRequest,
+    QueryRequestV1,
     QueryResponse,
     ChunkType,
     AssistantActionChunk,
     ArtifactUpdateChunk,
     ErrorChunk,
 )
+from uuid import uuid4
 
 
 class TestModels(unittest.TestCase):
@@ -135,9 +136,9 @@ class TestModels(unittest.TestCase):
         self.assertEqual(interaction.user_message.text, "Test message")
         self.assertEqual(interaction.assistant_actions, [])
 
-    def test_query_request(self):
-        """Test query request model."""
-        request = QueryRequest(
+    def test_query_request_v1(self):
+        """Test v1 query request model."""
+        request = QueryRequestV1(
             promptql_api_key="test-api-key",
             llm=HasuraLLMProvider(),
             ddn=DDNConfig(url="https://test-url.hasura.app"),
@@ -171,7 +172,9 @@ class TestModels(unittest.TestCase):
 
     def test_query_response(self):
         """Test query response model."""
+        thread_id = uuid4()
         response = QueryResponse(
+            thread_id=thread_id,
             assistant_actions=[AssistantAction(message="Test response")],
             modified_artifacts=[
                 Artifact(

@@ -3,7 +3,8 @@ PromptQL Natural Language API client implementation.
 """
 
 import json
-from typing import Dict, Generator, List, Optional, Union, Any, Callable, TypeVar, cast
+from typing import Dict, Generator, List, Optional, Union, Any, Literal
+from uuid import UUID
 
 import requests
 from requests.exceptions import RequestException
@@ -11,13 +12,17 @@ from requests.exceptions import RequestException
 from promptql_api_sdk.types import (
     LLMProvider,
     DDNConfig,
+    DDNConfigV2,
     Artifact,
     UserMessage,
     AssistantAction,
     Interaction,
     QueryRequest,
+    QueryRequestV1,
+    QueryRequestV2,
     QueryResponse,
     StreamChunk,
+    ThreadMetadataChunk,
     AssistantActionChunk,
     ArtifactUpdateChunk,
     ErrorChunk,
@@ -43,39 +48,70 @@ class PromptQLClient:
 
     This client provides methods to interact with the PromptQL Natural Language API,
     allowing you to send messages and receive responses with support for streaming.
+
+    Supports both v1 and v2 API versions:
+    - v1: Requires DDN URL and LLM provider configuration
+    - v2: Requires build_version or build_id, LLM config comes from build artifacts
     """
 
     BASE_URL = "https://api.promptql.pro.hasura.io"
     QUERY_ENDPOINT = "/query"
 
+    api_version: Literal["v1", "v2"]
+
     def __init__(
         self,
         api_key: str,
-        ddn_url: str,
-        llm_provider: LLMProvider,
+        ddn_url: Optional[str] = None,
+        llm_provider: Optional[LLMProvider] = None,
         ai_primitives_llm_provider: Optional[LLMProvider] = None,
         timezone: str = "UTC",
         ddn_headers: Optional[Dict[str, str]] = None,
+        # v2 parameters
+        build_id: Optional[UUID] = None,
+        build_version: Optional[str] = None,
     ):
         """
         Initialize the PromptQL client.
 
-        Args:
+        For v1 API (legacy):
             api_key: PromptQL API key created from project settings
             ddn_url: DDN URL for the project
             llm_provider: Configuration for the main LLM provider
             ai_primitives_llm_provider: Optional configuration for the AI primitives LLM provider
             timezone: IANA timezone for interpreting time-based queries
             ddn_headers: Optional headers to pass to DDN for authentication
+
+        For v2 API (recommended):
+            api_key: PromptQL API key created from project settings
+            build_id: UUID of the DDN build (optional, uses applied build if not specified)
+            build_version: Version of the DDN build (optional, uses applied build if not specified)
+            timezone: IANA timezone for interpreting time-based queries
+            ddn_headers: Optional headers to pass to DDN for authentication
         """
         self.api_key = api_key
-        self.ddn_config = DDNConfig(
-            url=ddn_url,
-            headers=ddn_headers or {},
-        )
-        self.llm_provider = llm_provider
-        self.ai_primitives_llm_provider = ai_primitives_llm_provider
         self.timezone = timezone
+
+        # Determine API version based on provided parameters
+        if ddn_url is not None:
+            # v1 mode
+            if llm_provider is None:
+                raise ValueError("llm_provider is required for v1 API")
+            self.api_version = "v1"
+            self.ddn_config = DDNConfig(
+                url=ddn_url,
+                headers=ddn_headers or {},
+            )
+            self.llm_provider = llm_provider
+            self.ai_primitives_llm_provider = ai_primitives_llm_provider
+        else:
+            # v2 mode
+            self.api_version = "v2"
+            self.ddn_config_v2 = DDNConfigV2(
+                build_id=build_id,
+                build_version=build_version,
+                headers=ddn_headers or {},
+            )
 
     def query(
         self,
@@ -90,7 +126,7 @@ class PromptQLClient:
 
         Args:
             message: The message to send to the API
-            system_instructions: Optional system instructions for the LLM
+            system_instructions: Optional system instructions for the LLM (v1 only, ignored in v2)
             artifacts: Optional list of artifacts to provide context
             previous_interactions: Optional list of previous interactions
             stream: Whether to return a streaming response
@@ -110,22 +146,34 @@ class PromptQLClient:
         interactions = previous_interactions or []
         interactions.append(current_interaction)
 
-        # Create the request
-        request = QueryRequest(
-            promptql_api_key=self.api_key,
-            llm=self.llm_provider,
-            ai_primitives_llm=self.ai_primitives_llm_provider,
-            ddn=self.ddn_config,
-            artifacts=artifacts or [],
-            system_instructions=system_instructions,
-            timezone=self.timezone,
-            interactions=interactions,
-            stream=stream,
-        )
+        # Create the request based on API version
+        if self.api_version == "v1":
+            request = QueryRequestV1(
+                promptql_api_key=self.api_key,
+                llm=self.llm_provider,
+                ai_primitives_llm=self.ai_primitives_llm_provider,
+                ddn=self.ddn_config,
+                artifacts=artifacts or [],
+                system_instructions=system_instructions,
+                timezone=self.timezone,
+                interactions=interactions,
+                stream=stream,
+            )
+        else:  # v2
+            request = QueryRequestV2(
+                ddn=self.ddn_config_v2,
+                artifacts=artifacts or [],
+                timezone=self.timezone,
+                interactions=interactions,
+                stream=stream,
+            )
 
         # Send the request
         url = f"{self.BASE_URL}{self.QUERY_ENDPOINT}"
-        headers = {"Content-Type": "application/json"}
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.api_key}",
+        }
 
         try:
             if stream:
@@ -197,7 +245,9 @@ class PromptQLClient:
                         # Determine the chunk type and parse accordingly
                         chunk_type = data.get("type")
 
-                        if chunk_type == "assistant_action_chunk":
+                        if chunk_type == "thread_metadata_chunk":
+                            yield ThreadMetadataChunk.model_validate(data)
+                        elif chunk_type == "assistant_action_chunk":
                             yield AssistantActionChunk.model_validate(data)
                         elif chunk_type == "artifact_update_chunk":
                             yield ArtifactUpdateChunk.model_validate(data)

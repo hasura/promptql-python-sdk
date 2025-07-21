@@ -6,6 +6,7 @@ import json
 import unittest
 from typing import cast
 from unittest.mock import patch, MagicMock
+from uuid import uuid4
 
 from promptql_api_sdk import PromptQLClient
 from promptql_api_sdk.types.models import (
@@ -14,8 +15,9 @@ from promptql_api_sdk.types.models import (
     UserMessage,
     AssistantAction,
     Interaction,
-    QueryRequest,
+    QueryRequestV1,
     QueryResponse,
+    ThreadMetadataChunk,
     AssistantActionChunk,
     ArtifactUpdateChunk,
     ErrorChunk,
@@ -55,6 +57,7 @@ class TestPromptQLClient(unittest.TestCase):
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
+            "thread_id": str(uuid4()),
             "assistant_actions": [
                 {
                     "message": "This is a test response",
@@ -83,7 +86,13 @@ class TestPromptQLClient(unittest.TestCase):
         # Verify the request
         args, kwargs = mock_post.call_args
         self.assertEqual(args[0], "https://api.promptql.pro.hasura.io/query")
-        self.assertEqual(kwargs["headers"], {"Content-Type": "application/json"})
+        self.assertEqual(
+            kwargs["headers"],
+            {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer test-api-key",
+            },
+        )
 
         # Parse the request data
         request_data = json.loads(kwargs["data"])
@@ -103,7 +112,9 @@ class TestPromptQLClient(unittest.TestCase):
         # Mock response
         mock_response = MagicMock()
         mock_response.status_code = 200
+        thread_id = str(uuid4())
         mock_response.iter_lines.return_value = [
+            f'data: {{"type": "thread_metadata_chunk", "thread_id": "{thread_id}"}}'.encode(),
             b'data: {"type": "assistant_action_chunk", "message": "This is ", "plan": null, "code": null, "code_output": null, "code_error": null, "index": 0}',
             b'data: {"type": "assistant_action_chunk", "message": "a test ", "plan": null, "code": null, "code_output": null, "code_error": null, "index": 0}',
             b'data: {"type": "assistant_action_chunk", "message": "response", "plan": null, "code": null, "code_output": null, "code_error": null, "index": 0}',
@@ -114,15 +125,20 @@ class TestPromptQLClient(unittest.TestCase):
         chunks = list(self.client.query("Test message", stream=True))
 
         # Verify the chunks
-        self.assertEqual(len(chunks), 3)
-        self.assertIsInstance(chunks[0], AssistantActionChunk)
+        self.assertEqual(len(chunks), 4)
+        self.assertIsInstance(chunks[0], ThreadMetadataChunk)
+        self.assertIsInstance(chunks[1], AssistantActionChunk)
+        # Check ThreadMetadataChunk
+        thread_chunk = cast(ThreadMetadataChunk, chunks[0])
+        self.assertIsNotNone(thread_chunk.thread_id)
+
         # Cast to AssistantActionChunk to help type checker
-        chunk0 = cast(AssistantActionChunk, chunks[0])
         chunk1 = cast(AssistantActionChunk, chunks[1])
         chunk2 = cast(AssistantActionChunk, chunks[2])
-        self.assertEqual(chunk0.message, "This is ")
-        self.assertEqual(chunk1.message, "a test ")
-        self.assertEqual(chunk2.message, "response")
+        chunk3 = cast(AssistantActionChunk, chunks[3])
+        self.assertEqual(chunk1.message, "This is ")
+        self.assertEqual(chunk2.message, "a test ")
+        self.assertEqual(chunk3.message, "response")
 
         # Verify the request
         args, kwargs = mock_post.call_args
@@ -181,6 +197,7 @@ class TestConversation(unittest.TestCase):
         """Test sending a non-streaming message."""
         # Mock the client.query method
         mock_response = QueryResponse(
+            thread_id=uuid4(),
             assistant_actions=[AssistantAction(message="Test response")],
             modified_artifacts=[
                 Artifact(
