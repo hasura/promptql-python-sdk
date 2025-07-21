@@ -39,7 +39,7 @@ def test_v2_api():
         print_env_help()
         return False
 
-    print(f"✅ API Key: {'*' * (len(api_key) - 4)}{api_key[-4:]}")
+    print(f"✅ API Key: {'*' * 8}")
 
     # Handle build configuration
     build_id = None
@@ -59,7 +59,7 @@ def test_v2_api():
     ddn_headers = {}
     if ddn_token:
         ddn_headers["x-hasura-ddn-token"] = ddn_token
-        print(f"✅ DDN Token: {'*' * (len(ddn_token) - 4)}{ddn_token[-4:]}")
+        print(f"✅ DDN Token: {'*' * 8}")
     else:
         print("⚠️  No DDN token provided (may be required for authentication)")
 
