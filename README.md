@@ -79,6 +79,23 @@ response = client.query("What is the average temperature in San Francisco?")
 print(response.assistant_actions[0].message)
 ```
 
+## Private DDN
+
+If you are using a private DDN, you need to provide the base URL for the PromptQL API:
+
+```python
+client = PromptQLClient(
+    api_key="your-promptql-api-key",
+    build_version="your-build-version",
+    timezone="America/Los_Angeles",
+    api_base_url="https://promptql.fqdn.hasura.app/api",
+)
+```
+
+**Note:** The `api_base_url` should not include the `/query` endpoint.
+
+For more details refer to the [PromptQL API Endpoint documentation](https://promptql.io/docs/promptql-apis/natural-language-api/#query-endpoint).
+
 ## Conversation Management
 
 The SDK provides a `Conversation` class to help manage multi-turn conversations:

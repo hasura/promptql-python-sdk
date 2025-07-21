@@ -70,9 +70,13 @@ class PromptQLClient:
         # v2 parameters
         build_id: Optional[UUID] = None,
         build_version: Optional[str] = None,
+        # Private DDN base URL
+        api_base_url: Optional[str] = None,
     ):
         """
         Initialize the PromptQL client.
+
+        api_base_url: Base URL for the PromptQL API, required for private DDN (optional, defaults to public API)
 
         For v1 API (legacy):
             api_key: PromptQL API key created from project settings
@@ -91,6 +95,7 @@ class PromptQLClient:
         """
         self.api_key = api_key
         self.timezone = timezone
+        self.api_base_url = api_base_url or self.BASE_URL
 
         # Determine API version based on provided parameters
         if ddn_url is not None:
@@ -168,7 +173,7 @@ class PromptQLClient:
             )
 
         # Send the request
-        url = f"{self.BASE_URL}{self.QUERY_ENDPOINT}"
+        url = f"{self.api_base_url}{self.QUERY_ENDPOINT}"
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.api_key}",
