@@ -27,14 +27,10 @@ def main():
     # Get build ID or build version from environment variables
     build_id_str = os.environ.get("PROMPTQL_BUILD_ID")
     build_version = os.environ.get("PROMPTQL_BUILD_VERSION")
-    
+
     if not build_id_str and not build_version:
-        print("Please set either PROMPTQL_BUILD_ID or PROMPTQL_BUILD_VERSION environment variable")
-        print("Example:")
-        print("  export PROMPTQL_BUILD_ID=8ac7ccd4-7502-44d5-b2ee-ea9639b1f653")
-        print("  or")
-        print("  export PROMPTQL_BUILD_VERSION=505331f4b2")
-        sys.exit(1)
+        print("Build ID or build version is not set.")
+        print("Using applied build by default.")
 
     # Parse build_id if provided
     build_id = None
